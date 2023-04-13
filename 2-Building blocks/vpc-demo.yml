@@ -1,0 +1,271 @@
+# In this template we are going to write a cloudformation template to create:
+# vpc with 2 public subnets, 2 private subnets, 
+# public route table, private route table, NACLS, Internet gateway, Nat gateway
+# we will make Use of:
+# metadata
+# parameter 
+# Maping 
+# we will also create outputs 
+# Ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/metadata-section-structure.html
+
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cloudformation template to create EC2 instance'
+Parameters:
+    VpcCidrBlock:
+        Type: String
+        Default: 10.0.0.0/16
+        Description: CIDR block for VPC
+        AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+        ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+    NumberOfSubnets:
+        Description: Number of Subnets to be created
+        Type: String
+        Default: 256
+    SubnetOffset:
+        Description: Offest of Subnet from CIDR
+        Type: String
+        Default: 8
+    ThirDigitcidrPubSubnet1:
+        Type: String
+        Default: 0
+    ThirDigitcidrPrivSubnet1:
+        Type: String
+        Default: 1  
+    ThirDigitcidrPubSubnet2:
+        Type: String
+        Default: 2
+    ThirDigitcidrPrivSubnet2:
+        Type: String
+        Default: 3     
+
+Metadata: 
+  AWS::CloudFormation::Interface: 
+    ParameterGroups:  
+      - 
+        Label: 
+          default: "VPC Cidr"
+        Parameters: 
+            - VpcCidrBlock
+      -
+        Label: 
+          default: " Subnet Cidr Range"
+        Parameters: 
+            - NumberOfSubnets
+            - SubnetOffset
+      - 
+        Label: 
+          default: "Sunbet AZ1"
+        Parameters: 
+            - ThirDigitcidrPubSubnet1
+            - ThirDigitcidrPrivSubnet1
+      - 
+        Label: 
+          default: "Sunbet AZ2"
+        Parameters: 
+            - ThirDigitcidrPubSubnet2
+            - ThirDigitcidrPrivSubnet2
+   
+    ParameterLabels: 
+      NumberOfSubnets: 
+        default: "The number of CIDRs to generate. Valid range is between 1 and 256."
+      SubnetOffset: 
+        default: "The number of subnet bits for the CIDR. For example, specifying a value '8' for this parameter will create a CIDR with a mask of /24"
+      ThirDigitcidrPubSubnet1: 
+        default: "Enter the thirt digit of the Publicsubnet1 cidr for example 10.0.Yourdigit.0/24"
+      ThirDigitcidrPrivSubnet1: 
+        default: "Enter the thirt digit of the Privatesubnet1 cidr for example 10.0.Yourdigit.0/24"
+      ThirDigitcidrPubSubnet2: 
+        default: "Enter the thirt digit of the Publicsubnet2 cidr for example 10.0.Yourdigit.0/24"
+      ThirDigitcidrPrivSubnet2: 
+        default: "Enter the thirt digit of the Privatesubnet2 cidr for example 10.0.Yourdigit.0/24"
+Mappings: 
+  RegionMap: 
+    us-east-1:
+      prod: us-east-1b 
+      dev: us-east-1c
+    
+    us-east-2:
+      prod: us-east-2b
+      dev: us-east-2C
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: Name
+        Value: vpcdemo
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [!Ref ThirDigitcidrPubSubnet1 , !Cidr [!Ref VpcCidrBlock , !Ref NumberOfSubnets ,!Ref  SubnetOffset]]
+      AvailabilityZone: !Select ['0', !GetAZs '']
+      Tags:
+      - Key: Name
+        Value: 'My Public Subnet 1'
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [!Ref ThirDigitcidrPubSubnet2, !Cidr [!Ref VpcCidrBlock, !Ref NumberOfSubnets, !Ref  SubnetOffset]]
+      AvailabilityZone: !Select ['1', !GetAZs '']
+      Tags:
+      - Key: Name
+        Value: 'My Public Subnet 2'
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [!Ref ThirDigitcidrPrivSubnet1 , !Cidr [!Ref VpcCidrBlock , !Ref NumberOfSubnets ,!Ref  SubnetOffset]]
+      AvailabilityZone: !Select ['0', !GetAZs '']
+      Tags:
+      - Key: Name
+        Value: 'My Public Subnet 1'
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Select [!Ref ThirDigitcidrPrivSubnet2, !Cidr [!Ref VpcCidrBlock, !Ref NumberOfSubnets, !Ref  SubnetOffset]]
+      AvailabilityZone: !Select ['1', !GetAZs '']
+      Tags:
+      - Key: Name
+        Value: 'My Public Subnet 2'
+  
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: 'My Public Route Table'
+
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+       - Key: Name
+         Value: 'My Internet Gateway'
+  MyInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref myVPC
+      InternetGatewayId: !Ref MyInternetGateway
+  
+  PublicRoute:
+      Type: AWS::EC2::Route
+      DependsOn: MyInternetGatewayAttachment
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref MyInternetGateway
+     
+  PublicSubnet1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref PublicSubnet1
+        RouteTableId: !Ref PublicRouteTable
+     
+  PublicSubnet2RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref PublicSubnet2
+        RouteTableId: !Ref PublicRouteTable
+  
+  NatGateway:
+      Type: AWS::EC2::NatGateway
+      DependsOn: NatPublicIP
+      Properties: 
+        SubnetId: !Ref PublicSubnet1
+        AllocationId: !GetAtt NatPublicIP.AllocationId
+
+  NatPublicIP:
+      Type: AWS::EC2::EIP
+      DependsOn: myVPC
+      Properties:
+        Domain: vpc
+     
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: 'My Rrivate Route Table'
+  PrivateRoute:
+      Type: AWS::EC2::Route
+      Properties:
+        NatGatewayId: !Ref NatGateway
+        RouteTableId: !Ref PrivateRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+      
+  PrivateSubnet1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref PrivateSubnet1
+        RouteTableId: !Ref PrivateRouteTable
+     
+  PrivateSubnet2RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref PrivateSubnet2
+        RouteTableId: !Ref PrivateRouteTable
+
+  MyPublicNetworkAcl:
+      Type: AWS::EC2::NetworkAcl
+      Properties:
+        VpcId: !Ref myVPC
+        Tags:
+          - Key: Name
+            Value: 'My Public NACL'
+  MyPrivateNetworkAcl:
+      Type: AWS::EC2::NetworkAcl
+      Properties:
+        VpcId: !Ref myVPC
+        Tags:
+          - Key: Name
+            Value: 'My Private NACL'
+
+
+
+Outputs:
+  VpcId:
+    Description: VPC id.
+    Value: !GetAtt 
+      - myVPC
+      - VpcId
+    Export:
+      Name: VpcId 
+  PublicSubnet1Id:
+    Description: PublicSubnet1 id.
+    Value: !GetAtt 
+      - PublicSubnet1
+      - SubnetId
+    Export:
+      Name: PublicSubnet1Id  
+  PublicSubnet2Id:
+    Description: PublicSubnet2 id.
+    Value: !GetAtt 
+      - PublicSubnet2
+      - SubnetId
+    Export:
+      Name: PublicSubnet2Id 
+  PrivateSubnet1Id:
+    Description: PrivateSubnet1 id.
+    Value: !GetAtt 
+      - PrivateSubnet1
+      - SubnetId
+    Export:
+      Name: PrivateSubnet1Id 
+  PrivateSubnet2Id:
+    Description: PrivateSubnet2 id.
+    Value: !GetAtt 
+      - PrivateSubnet2
+      - SubnetId
+    Export:
+      Name: PrivateSubnet2Id 

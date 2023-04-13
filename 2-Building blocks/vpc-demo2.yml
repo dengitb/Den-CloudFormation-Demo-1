@@ -1,0 +1,30 @@
+
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cloudformation template to create EC2 instance'
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/24
+  VpcCidrBlock:
+    Type: AWS::EC2::VPCCidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 192.0.0.0/24
+  VpcCidrBlockIpv6:
+    Type: AWS::EC2::VPCCidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AmazonProvidedIpv6CidrBlock: true
+
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+  PrimaryCidrBlock:
+    Value: !GetAtt VPC.CidrBlock
+  Ipv6CidrBlock:
+    Value: !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]
+  CidrBlockAssociation:
+    Value: !Select [ 0, !GetAtt VPC.CidrBlockAssociations ]

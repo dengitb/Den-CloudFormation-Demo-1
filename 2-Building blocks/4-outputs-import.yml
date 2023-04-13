@@ -40,8 +40,7 @@ Resources:
         Ref: AMIID
       InstanceType:
         Ref: InstanceType
-      SecurityGroupIds:
-      - !ImportValue WebSeverSecurityGroupId # Fn::ImportValue
+      SecurityGroupIds: !ImportValue WebSeverSecurityGroupId # Fn::ImportValue
       KeyName:
         Ref: KeyName      
       BlockDeviceMappings:
